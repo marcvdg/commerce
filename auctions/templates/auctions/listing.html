@@ -1,0 +1,38 @@
+{% extends "auctions/layout.html" %}
+
+{% block body %}
+    <h2>{{ listing.name }}</h2>
+
+    <p>Put up by {{listing.user}}</p>
+
+        <form action="" method="POST">
+            {% csrf_token %}
+            <input type="submit" value="Add to watchlist">
+        </form>
+
+    <p>{{ listing.description }}</p>
+
+    <h3>Bids</h3>
+    <ul id="bids">
+        {% for bid in bids %}
+            <li>{{ bid.amount }} by {{ bid.user }}</li>
+        {% endfor %}
+    </ul>
+    <form action="" method="post">
+        {% csrf_token %}
+        {{ bidform }}
+        <input type="submit" value="Submit">
+    </form>
+
+    <h3>Comments</h3>
+    <ul id="bids">
+        {% for comment in comments %}
+            <li>{{ comment.user }} said: "{{ comment.content }}"</li>
+        {% endfor %}
+    </ul>
+    <form action="" method="post">
+        {% csrf_token %}
+        {{ commentform }}
+        <input type="submit" value="Submit">
+    </form>
+{% endblock %}
