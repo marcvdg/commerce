@@ -5,10 +5,12 @@
 
     <p>Put up by {{listing.user}}</p>
 
-        <form action="" method="POST">
+    {% if user.is_authenticated %}
+        <form action="{% url 'add_watchlist' id %}" method="POST">
             {% csrf_token %}
-            <input type="submit" value="Add to watchlist">
+            <input type="submit" value="{{ watchbutton }}">
         </form>
+    {% endif %}
 
     <p>{{ listing.description }}</p>
 
@@ -18,11 +20,14 @@
             <li>{{ bid.amount }} by {{ bid.user }}</li>
         {% endfor %}
     </ul>
-    <form action="" method="post">
-        {% csrf_token %}
-        {{ bidform }}
-        <input type="submit" value="Submit">
-    </form>
+
+    {% if user.is_authenticated %}
+        <form action="{% url 'add_bid' id %}" method="post">
+            {% csrf_token %}
+            {{ bidform }}
+            <input type="submit" value="Submit">
+        </form>
+    {% endif %}
 
     <h3>Comments</h3>
     <ul id="bids">
@@ -30,9 +35,13 @@
             <li>{{ comment.user }} said: "{{ comment.content }}"</li>
         {% endfor %}
     </ul>
-    <form action="" method="post">
-        {% csrf_token %}
-        {{ commentform }}
-        <input type="submit" value="Submit">
-    </form>
+    
+    {% if user.is_authenticated %}
+        <form action="{% url 'add_comment' id %}" method="post">
+            {% csrf_token %}
+            {{ commentform }}
+            <input type="submit" value="Submit">
+        </form>
+    {% endif %}
+
 {% endblock %}

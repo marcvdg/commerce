@@ -30,44 +30,50 @@ def index(request):
 #change template to restrict editing
 def listing(request, id):
     listing = Listing.objects.get(pk=id)
-    user = request.user
     bids = Bid.objects.filter(listing__id=id)
     comments = Comment.objects.filter(listing__id=id)
-    if request.method == "POST":
-        if "comment_content" in request.POST:
-            commentform = CommentForm(request.POST)
-            bidform = BidForm()
-            if commentform.is_valid():
-                
-                comment_content = commentform.cleaned_data["comment_content"]
-                newcomment = Comment(user=user, listing=listing, content=comment_content) 
-                newcomment.save()
-        elif "bid_amount" in request.POST:
-            bidform = BidForm(request.POST)
-            commentform = CommentForm()     
-            if bidform.is_valid():
-                bid_amount = bidform.cleaned_data["bid_amount"]
-                newbid = Bid(user=request.user, amount=bid_amount, listing=listing)
-                newbid.save()
-        else:
-            pass #add to watchlist
-        return render(request, "auctions/listing.html", {'listing': listing, 'bids': bids, 'bidform': bidform, 'comments': comments, 'commentform': commentform})
+    commentform = CommentForm()
+    bidform = BidForm()
+    watchers = listing.watched_by.all()
+    if request.user in watchers:
+        watchbutton = 'Add to watchlist'
     else:
-        commentform = CommentForm()
-        bidform = BidForm()
-        return render(request, "auctions/listing.html", {'listing': listing, 'bids': bids, 'bidform': bidform, 'comments': comments, 'commentform': commentform})
+        watchbutton = 'Remove from watchlist'
+    return render(request, "auctions/listing.html", {'id': id, 'listing': listing, 'bids': bids, 'bidform': bidform, 'comments': comments, 'commentform': commentform, 'watchbutton': watchbutton})
 
 @login_required
-def add_comment(request):
-    pass
+def add_comment(request, id):
+    listing = Listing.objects.get(pk=id)
+    if request.method == "POST":
+        commentform = CommentForm(request.POST)
+        if commentform.is_valid(): 
+            comment_content = commentform.cleaned_data["comment_content"]
+            newcomment = Comment(user=request.user, listing=listing, content=comment_content) 
+            newcomment.save()
+    return HttpResponseRedirect(reverse("listing", args=[id]))
 
 @login_required
-def add_bid(request):
-    pass
+def add_bid(request, id):
+    listing = Listing.objects.get(pk=id)
+    if request.method == "POST":
+        bidform = BidForm(request.POST)
+        if bidform.is_valid():
+            bid_amount = bidform.cleaned_data["bid_amount"]
+            newbid = Bid(user=request.user, amount=bid_amount, listing=listing)
+            newbid.save()
+    return HttpResponseRedirect(reverse("listing", args=[id]))
 
 @login_required
-def add_to_watchlist(request):
-    pass
+def add_watchlist(request, id):
+    listing = Listing.objects.get(pk=id)
+    watchers = listing.watched_by.all()
+    if request.method == "POST":
+        if request.user in watchers:
+            listing.watched_by.remove(request.user) 
+        else:
+            listing.watched_by.add(request.user)
+        print(watchers)
+    return HttpResponseRedirect(reverse("listing", args=[id]))
 
 @login_required
 def add_listing(request):
