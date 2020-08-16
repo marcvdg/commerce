@@ -1,38 +1,43 @@
 {% extends "auctions/layout.html" %}
 
 {% block body %}
-    <h2>{{ listing.name }}</h2>
+    <h2>{{ listing.name }}{% if not active %} (closed){% endif %} </h2>
 
-    <p>Put up by {{listing.user}}</p>
+    <p>Put up by {{ listing.user }}, starts at ${{ listing.starting_bid }}</p>
 
-    {% if user.is_authenticated %}
+    {% if user.is_authenticated and listing.active %}
         <form action="{% url 'add_watchlist' id %}" method="POST">
             {% csrf_token %}
             <input type="submit" value="{{ watchbutton }}">
         </form>
+    {% endif %}
+    
+    {% if not listing.active %}
+        <p>Won by {{ winner }}!</p>
     {% endif %}
 
     <p>{{ listing.description }}</p>
 
     <h3>Bids</h3>
     <ul id="bids">
-        {% for bid in bids %}
-            <li>{{ bid.amount }} by {{ bid.user }}</li>
+        {% for bid in bids reversed %}
+            <li>{{ bid.amount }} by {{ bid.user }} ({{ bid.timestamp }})</li>
         {% endfor %}
     </ul>
 
-    {% if user.is_authenticated %}
+    {% if user.is_authenticated and listing.active %}
         <form action="{% url 'add_bid' id %}" method="post">
             {% csrf_token %}
             {{ bidform }}
+            {{ form.non_field_errors }}
             <input type="submit" value="Submit">
         </form>
     {% endif %}
 
     <h3>Comments</h3>
     <ul id="bids">
-        {% for comment in comments %}
-            <li>{{ comment.user }} said: "{{ comment.content }}"</li>
+        {% for comment in comments reversed %}
+            <li>At {{ comment.timestamp }}, {{ comment.user }} said: "{{ comment.content }}"</li>
         {% endfor %}
     </ul>
     
@@ -41,6 +46,13 @@
             {% csrf_token %}
             {{ commentform }}
             <input type="submit" value="Submit">
+        </form>
+    {% endif %}
+
+    {% if mylisting and active %}
+        <form action="{% url 'close_listing' id %}" method="POST">
+            {% csrf_token %}
+            <input type="submit" value="Close listing">
         </form>
     {% endif %}
 
