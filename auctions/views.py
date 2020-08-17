@@ -5,47 +5,12 @@ from django.db import IntegrityError
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
-from django import forms
 from django.contrib.auth.decorators import login_required
 from django.forms.models import model_to_dict
-from django.core.exceptions import ValidationError
-from django.utils.translation import gettext as _
 
 from .models import (User, Bid, Listing, Comment)
-
-#to util
-def get_min_bid(listing_id):
-    current_listing = Listing.objects.get(pk=listing_id)
-    try:
-        min_bid = Bid.objects.filter(listing__id=listing_id).order_by('-amount').first().amount
-    except AttributeError:
-        min_bid = current_listing.starting_bid
-    return min_bid
-
-class ListingForm(forms.Form):
-    """ Form to create a new listing """
-    listing_name = forms.CharField(label='Listing name', max_length=64)
-    listing_desc = forms.CharField(label='Description', max_length=256)
-    listing_start = forms.IntegerField(label='Starting bid', max_value=9999)
-
-class CommentForm(forms.Form):
-    """ Form to comment on a listing """
-    comment_content = forms.CharField(label='Your comment', max_length=256)
-
-class BidForm(forms.Form):
-    """ Form to place a bid """
-    bid_amount = forms.IntegerField(label='Your bid', max_value=9999, validators=[])
-    min_bid = forms.IntegerField(label='MIN') #widget=forms.HiddenInput())
-
-    def clean(self):
-        # Don't allow bids that are below current limit
-        cleaned_data = super(BidForm, self).clean()
-        min_bid = cleaned_data.get('min_bid')
-        bid_amount = cleaned_data.get('bid_amount')
-        if min_bid >= bid_amount:
-            print("WAR")
-            raise ValidationError(_('Must be higher than highest bid so far..'))
-        return cleaned_data
+from .util import (get_min_bid)
+from .forms import (ListingForm, BidForm, CommentForm)
 
 
 def index(request):
@@ -64,7 +29,7 @@ def index(request):
 
 def listing(request, listing_id):
     """ Listing page, displaying description, bid and content """
-    
+
     # Get all the page's variables
     current_user = str(request.user)
     current_listing = Listing.objects.get(pk=listing_id)
@@ -75,7 +40,7 @@ def listing(request, listing_id):
     # Set forms
     commentform = CommentForm()
     bidform = BidForm(initial={"min_bid":get_min_bid(listing_id)})
-    
+
     # Check if listing belongs to user
     mylisting = (current_listing.user.username == current_user)
 
@@ -92,6 +57,13 @@ def listing(request, listing_id):
     except AttributeError:
         winner = "no one"
 
+    if request.method == "POST":
+        bidform = BidForm(request.POST)
+        if bidform.is_valid():
+            bid_amount = bidform.cleaned_data["bid_amount"]
+            newbid = Bid(user=request.user, amount=bid_amount, listing=current_listing)
+            newbid.save()
+
     # Render the page
     return render(request, "auctions/listing.html", {'id': listing_id,
                                                      'listing': current_listing,
@@ -104,6 +76,20 @@ def listing(request, listing_id):
                                                      'active': active,
                                                      'winner': winner
                                                     })
+
+def categories(request):
+    listings = Listing.objects.all()
+    category_set = {"No category": []}
+    for listing in listings:
+        if listing.category == "":
+            category_set["No category"].append(listing)
+        else: 
+            try:
+                category_set[listing.category].append(listing)
+            except KeyError:
+                category_set[listing.category] = [listing]
+    print(category_set)
+    return render(request, "auctions/categories.html", {'categories': category_set})
 
 @login_required
 def add_comment(request, listing_id):
@@ -137,17 +123,12 @@ def close_listing(request, listing_id):
 @login_required
 def add_bid(request, listing_id):
     current_listing = Listing.objects.get(pk=listing_id)
-    highest_bid = get_min_bid(listing_id)
     if request.method == "POST":
         bidform = BidForm(request.POST)
         if bidform.is_valid():
             bid_amount = bidform.cleaned_data["bid_amount"]
-            if bid_amount > highest_bid:
-                newbid = Bid(user=request.user, amount=bid_amount, listing=current_listing)
-                newbid.save()
-            else:
-                print('not high enough')
-                #TO DO: error validator
+            newbid = Bid(user=request.user, amount=bid_amount, listing=current_listing)
+            newbid.save()
     return HttpResponseRedirect(reverse("listing", args=[listing_id]))
 
 @login_required
@@ -164,17 +145,9 @@ def add_watchlist(request, listing_id):
 
 @login_required
 def add_listing(request):
-    form = ListingForm
+    form = ListingForm(initial={"user":request.user})
     if request.method == "POST":
-        listing_name = request.POST["listing_name"]
-        listing_desc = request.POST["listing_desc"]
-        listing_start = request.POST["listing_start"]
-        listing_user = request.user
-        newlisting = Listing(name=listing_name,
-                             user=listing_user,
-                             description=listing_desc,
-                             starting_bid=listing_start,
-                             active=True)
+        newlisting = ListingForm(request.POST)
         newlisting.save()
     return render(request, "auctions/newlisting.html", {'form': form})
 

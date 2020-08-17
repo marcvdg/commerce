@@ -16,6 +16,9 @@
         <p>Won by {{ winner }}!</p>
     {% endif %}
 
+    {% if listing.image_url %}
+        <img src="{{ listing.image_url }}">
+    {% endif %}
     <p>{{ listing.description }}</p>
 
     <h3>Bids</h3>
@@ -26,7 +29,7 @@
     </ul>
 
     {% if user.is_authenticated and listing.active %}
-        <form action="{% url 'add_bid' id %}" method="post">
+        <form action="" method="post">
             {% csrf_token %}
             {{ bidform }}
             {{ form.non_field_errors }}
